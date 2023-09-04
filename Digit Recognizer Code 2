@@ -1,0 +1,58 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import tensorflow as tf
+from tensorflow.keras import layers, models
+
+# Load the training data
+train_data = pd.read_csv('train.csv')
+test_data = pd.read_csv('test.csv')
+
+# Split the training data into features (X) and labels (y)
+X = train_data.drop(columns=['label'])
+y = train_data['label']
+
+# Split the training data into a training set and a validation set
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Normalize pixel values to be in the range [0, 1]
+X_train = X_train / 255.0
+X_val = X_val / 255.0
+
+# Reshape data into 28x28 images (required for Convolutional Neural Networks)
+X_train = X_train.values.reshape(-1, 28, 28, 1)
+X_val = X_val.values.reshape(-1, 28, 28, 1)
+
+
+
+# Build a simple convolutional neural network (CNN)
+model = models.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(28, 28, 1)),
+    layers.MaxPooling2D((2, 2)),
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dense(10, activation='softmax')
+])
+# Compile the model
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Train the model
+model.fit(X_train, y_train, epochs=10, validation_data=(X_val, y_val))
+
+# Make predictions on the test data
+test_data = test_data / 255.0
+test_data = test_data.values.reshape(-1, 28, 28, 1)
+predictions = model.predict(test_data)
+
+# Convert predictions to labels
+predicted_labels = np.argmax(predictions, axis=1)
+
+# Create a submission CSV file
+submission_df = pd.DataFrame({'ImageId': np.arange(1, len(predicted_labels) + 1), 'Label': predicted_labels})
+submission_df.to_csv('submission.csv', index=False) 
