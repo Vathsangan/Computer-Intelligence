@@ -1,0 +1,43 @@
+import pandas as pd
+import numpy as np
+
+train_data = pd.read_csv('/kaggle/input/digit-recognizer/train.csv')
+test_data = pd.read_csv('/kaggle/input/digit-recognizer/test.csv')
+
+X_train = train_data.drop(columns=['label'])
+y_train = train_data['label']
+
+X_test = test_data
+
+class MultinomialNB:
+    def __init__(self, alpha=1.0):
+        self.alpha = alpha  # Laplace smoothing parameter
+        self.class_prior_ = None
+        self.feature_log_prob_ = None
+
+    def fit(self, X, y):
+        classes, class_counts = np.unique(y, return_counts=True)
+        self.class_prior_ = class_counts / len(y)
+
+        num_classes = len(classes)
+        num_features = X.shape[1]
+        self.feature_log_prob_ = np.zeros((num_classes, num_features))
+
+        for i, c in enumerate(classes):
+            class_mask = (y == c)
+            class_count = class_counts[i]
+            term_counts = X[class_mask].sum(axis=0)
+            self.feature_log_prob_[i] = np.log((term_counts + self.alpha) / (class_count + self.alpha * num_features))
+
+    def predict(self, X):
+        log_probs = np.dot(X, self.feature_log_prob_.T) + np.log(self.class_prior_)
+
+        return np.argmax(log_probs, axis=1)
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+submission = pd.DataFrame({'ImageId': range(1, len(y_pred) + 1), 'Label': y_pred})
+
+submission.to_csv('submission.csv', index=False)
